@@ -13,6 +13,15 @@ const todos = [];
 let todoMeshes = [];
 let selectedTodo = null;
 
+// Mobile touch controls
+let joystickActive = false;
+let joystickStart = { x: 0, y: 0 };
+let joystickDelta = { x: 0, y: 0 };
+let lookActive = false;
+let lookStart = { x: 0, y: 0 };
+let lookDelta = { x: 0, y: 0 };
+const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
 init();
 animate();
 
@@ -38,6 +47,11 @@ function init() {
   document.addEventListener('click', () => controls.lock());
   controls.addEventListener('lock', () => {});
   controls.addEventListener('unlock', () => {});
+
+  // Mobile touch controls
+  if (isMobile) {
+    setupMobileControls();
+  }
 
   const onKeyDown = (e) => {
     switch (e.code) {
@@ -67,6 +81,92 @@ function init() {
   setupRaycaster();
   setupLights();
   window.addEventListener('resize', onWindowResize);
+}
+
+function setupMobileControls() {
+  const joystickContainer = document.getElementById('joystick-container');
+  const joystickBase = document.getElementById('joystick-base');
+  const joystickStick = document.getElementById('joystick-stick');
+  const lookArea = document.getElementById('look-area');
+  const btnJump = document.getElementById('btn-jump');
+  const btnCrouch = document.getElementById('btn-crouch');
+
+  const maxDist = 50;
+
+  joystickBase.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    const rect = joystickBase.getBoundingClientRect();
+    joystickStart.x = touch.clientX - rect.left - rect.width / 2;
+    joystickStart.y = touch.clientY - rect.top - rect.height / 2;
+  }, { passive: false });
+
+  joystickBase.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!joystickActive) return;
+    const touch = e.touches[0];
+    const rect = joystickBase.getBoundingClientRect();
+    const x = touch.clientX - rect.left - rect.width / 2;
+    const y = touch.clientY - rect.top - rect.height / 2;
+    const dist = Math.sqrt(x * x + y * y);
+    const angle = Math.atan2(y, x);
+    const clampedDist = Math.min(dist, maxDist);
+    joystickDelta.x = Math.cos(angle) * clampedDist;
+    joystickDelta.y = Math.sin(angle) * clampedDist;
+    joystickStick.style.transform = `translate(${joystickDelta.x}px, ${joystickDelta.y}px)`;
+  }, { passive: false });
+
+  joystickBase.addEventListener('touchend', () => {
+    joystickActive = false;
+    joystickDelta = { x: 0, y: 0 };
+    joystickStick.style.transform = 'translate(0, 0)';
+  });
+
+  lookArea.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    lookActive = true;
+    const touch = e.touches[0];
+    lookStart.x = touch.clientX;
+    lookStart.y = touch.clientY;
+  }, { passive: false });
+
+  lookArea.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!lookActive) return;
+    const touch = e.touches[0];
+    lookDelta.x = (touch.clientX - lookStart.x) * 0.005;
+    lookDelta.y = (touch.clientY - lookStart.y) * 0.005;
+    lookStart.x = touch.clientX;
+    lookStart.y = touch.clientY;
+  }, { passive: false });
+
+  lookArea.addEventListener('touchend', () => {
+    lookActive = false;
+    lookDelta = { x: 0, y: 0 };
+  });
+
+  let crouchActive = false;
+  btnJump.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (canJump) velocity.y += 220;
+    canJump = false;
+  }, { passive: false });
+
+  btnCrouch.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    crouchActive = !crouchActive;
+    camera.position.y = crouchActive ? 0.8 : 1.6;
+    btnCrouch.style.background = crouchActive 
+      ? 'linear-gradient(135deg, #00ffff, #00cccc)' 
+      : 'linear-gradient(135deg, #0a0a0f, #1a1a2e)';
+    btnCrouch.style.color = crouchActive ? '#0a0a0f' : '#00ffff';
+  }, { passive: false });
+
+  // Prevent pointer lock on mobile when touching UI
+  document.getElementById('todo-panel').addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
 }
 
 function createEnvironment() {
@@ -422,21 +522,31 @@ const mouse = new THREE.Vector2();
 let hoveredMesh = null;
 
 function setupRaycaster() {
-  renderer.domElement.addEventListener('mousemove', (e) => {
+  const handlePointerMove = (clientX, clientY) => {
     if (controls.isLocked) return;
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  });
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+  };
 
-  renderer.domElement.addEventListener('click', (e) => {
+  const handlePointerDown = (clientX, clientY) => {
     if (controls.isLocked) return;
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(todoMeshes.map(m => m.children[0]), true);
     if (intersects.length > 0) {
       const group = intersects[0].object.parent;
       toggleTodo(group.userData.todoId);
     }
-  });
+  };
+
+  renderer.domElement.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY));
+  renderer.domElement.addEventListener('click', (e) => handlePointerDown(e.clientX, e.clientY));
+  renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
 }
 
 function setupLights() {
@@ -487,6 +597,32 @@ function animate() {
     velocity.x -= velocity.x * 10.0 * delta;
     velocity.z -= velocity.z * 10.0 * delta;
     velocity.y -= 9.8 * 100.0 * delta;
+
+    if (isMobile) {
+      const deadZone = 15;
+      if (Math.abs(joystickDelta.y) > deadZone) {
+        moveForward = joystickDelta.y < 0;
+        moveBackward = joystickDelta.y > 0;
+      } else {
+        moveForward = moveBackward = false;
+      }
+      if (Math.abs(joystickDelta.x) > deadZone) {
+        moveRight = joystickDelta.x > 0;
+        moveLeft = joystickDelta.x < 0;
+      } else {
+        moveLeft = moveRight = false;
+      }
+
+      if (lookDelta.x !== 0 || lookDelta.y !== 0) {
+        const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -lookDelta.x);
+        const pitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -lookDelta.y);
+        controls.getObject().quaternion.multiply(yaw);
+        const euler = new THREE.Euler().setFromQuaternion(controls.getObject().quaternion, 'YXZ');
+        euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x + pitch._x));
+        controls.getObject().quaternion.setFromEuler(euler);
+        lookDelta.x = lookDelta.y = 0;
+      }
+    }
 
     direction.z = Number(moveForward) - Number(moveBackward);
     direction.x = Number(moveRight) - Number(moveLeft);
