@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyberpunk 3D Todo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0a0f; font-family: 'Courier New', monospace; }
+    #app { width: 100vw; height: 100vh; }
+    #ui {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+      pointer-events: none;
+    }
+    #ui h1 {
+      font-size: 28px;
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    #ui .subtitle {
+      font-size: 12px;
+      color: #ff00ff;
+      text-shadow: 0 0 5px #ff00ff;
+      letter-spacing: 2px;
+    }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    #controls button {
+      background: linear-gradient(135deg, #0a0a0f, #1a1a2e);
+      border: 2px solid #00ffff;
+      color: #00ffff;
+      padding: 12px 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-shadow: 0 0 5px #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3), inset 0 0 15px rgba(0, 255, 255, 0.1);
+    }
+    #controls button:hover {
+      background: linear-gradient(135deg, #00ffff, #00cccc);
+      color: #0a0a0f;
+      box-shadow: 0 0 25px #00ffff, inset 0 0 25px rgba(0, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    #controls button:active { transform: scale(0.98); }
+    #todo-panel {
+      position: fixed;
+      top: 50%;
+      right: 20px;
+      transform: translateY(-50%);
+      z-index: 100;
+      width: 300px;
+      background: linear-gradient(135deg, rgba(10,10,15,0.95), rgba(26,26,46,0.9));
+      border: 2px solid #00ffff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.2), inset 0 0 30px rgba(0, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      pointer-events: auto;
+    }
+    #todo-panel h2 {
+      color: #ff00ff;
+      font-size: 16px;
+      letter-spacing: 3px;
+      margin-bottom: 16px;
+      text-shadow: 0 0 10px #ff00ff;
+      border-bottom: 1px solid #00ffff;
+      padding-bottom: 10px;
+    }
+    #todo-input {
+      width: 100%;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #00ffff;
+      color: #00ffff;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      margin-bottom: 12px;
+      outline: none;
+      transition: all 0.3s;
+    }
+    #todo-input:focus {
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+      border-color: #ff00ff;
+    }
+    #todo-input::placeholder { color: #00ffff88; }
+    #todo-list { max-height: 300px; overflow-y: auto; }
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0, 255, 255, 0.05);
+      border: 1px solid #00ffff33;
+      margin-bottom: 8px;
+      transition: all 0.3s;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .todo-item:hover { background: rgba(0, 255, 255, 0.1); border-color: #00ffff; }
+    .todo-item.completed { opacity: 0.5; }
+    .todo-item.completed .todo-text { text-decoration: line-through; color: #00ffff88; }
+    .todo-checkbox {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #00ffff;
+      background: transparent;
+      cursor: pointer;
+      appearance: none;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .todo-checkbox:checked {
+      background: #00ffff;
+      box-shadow: 0 0 10px #00ffff;
+    }
+    .todo-text { flex: 1; color: #00ffff; font-size: 13px; word-break: break-word; }
+    .todo-delete {
+      background: transparent;
+      border: 1px solid #ff0066;
+      color: #ff0066;
+      padding: 4px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .todo-delete:hover { background: #ff0066; color: #0a0a0f; box-shadow: 0 0 10px #ff0066; }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      pointer-events: none;
+      z-index: 99;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: #00ffff;
+      box-shadow: 0 0 5px #00ffff;
+    }
+    #crosshair::before { width: 2px; height: 24px; left: 50%; transform: translateX(-50%); }
+    #crosshair::after { width: 24px; height: 2px; top: 50%; transform: translateY(-50%); }
+    .hint {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      color: #00ffff88;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-shadow: 0 0 5px #00ffff;
+      pointer-events: none;
+      line-height: 1.8;
+    }
+    .scanlines {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.1),
+        rgba(0,0,0,0.1) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      animation: scan 8s linear infinite;
+    }
+    @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 100vh; } }
+    .glitch {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0;
+      animation: glitch 4s infinite;
+    }
+    @keyframes glitch {
+      0%, 90%, 100% { opacity: 0; }
+      92% { opacity: 0.02; transform: translateX(-2px); }
+      94% { opacity: 0.02; transform: translateX(2px); }
+      96% { opacity: 0.02; transform: translateX(-1px); }
+      98% { opacity: 0.02; transform: translateX(1px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="scanlines"></div>
+  <div class="glitch"></div>
+  <div id="ui">
+    <h1>CYBERPUNK TODO</h1>
+    <div class="subtitle">NEURAL INTERFACE v2.0.7 // SECTOR 7-G</div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="controls">
+    <button id="btn-add">+ ADD TASK</button>
+    <button id="btn-clear">CLEAR DONE</button>
+  </div>
+  <div id="todo-panel">
+    <h2>TASK QUEUE</h2>
+    <input type="text" id="todo-input" placeholder="ENTER NEW DIRECTIVE...">
+    <div id="todo-list"></div>
+  </div>
+  <div class="hint">
+    WASD / PFEILE: BEWEGUNG<br>
+    MAUS: UMSEHEN<br>
+    SHIFT: SPRINT<br>
+    KLICK AUF WÜRFEL: TOGGLE
+  </div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
