@@ -270,7 +270,6 @@ function createEnvironment(): void {
     building.receiveShadow = true;
     scene.add(building);
 
-    addBuildingLights(building.position, w, h, d);
     addBuildingWindows(building.position, w, h, d);
   }
 
@@ -306,31 +305,6 @@ function createEnvironment(): void {
   const particles = new THREE.Points(particlesGeo, particlesMat);
   scene.add(particles);
   scene.userData.particles = particles;
-}
-
-function addBuildingLights(pos: THREE.Vector3, w: number, h: number, d: number): void {
-  const lightCount = Math.floor(h / 3);
-  for (let i = 0; i < lightCount; i++) {
-    const y = -h / 2 + 2 + i * 3;
-    const colors = [0x00ffff, 0xff00ff, 0xffff00];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const light = new THREE.PointLight(color, 0.5, 10, 2);
-    light.position.set(pos.x, pos.y + y, pos.z + d / 2 + 0.5);
-    scene.add(light);
-
-    const light2 = light.clone();
-    light2.position.z = pos.z - d / 2 - 0.5;
-    scene.add(light2);
-
-    const light3 = light.clone();
-    light3.position.x = pos.x + w / 2 + 0.5;
-    light3.position.z = pos.z;
-    scene.add(light3);
-
-    const light4 = light.clone();
-    light4.position.x = pos.x - w / 2 - 0.5;
-    scene.add(light4);
-  }
 }
 
 function addBuildingWindows(pos: THREE.Vector3, w: number, h: number, d: number): void {

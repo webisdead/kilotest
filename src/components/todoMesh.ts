@@ -11,7 +11,7 @@ export function createTodoMesh(todo: Todo, index: number, scene: THREE.Scene): T
     metalness: 0.8,
     roughness: 0.2,
     emissive: todo.completed ? 0x00ff88 : 0x00ffff,
-    emissiveIntensity: 0.5,
+    emissiveIntensity: 0.8,
   });
   const cube = new THREE.Mesh(cubeGeo, cubeMat);
   cube.castShadow = true;
@@ -51,11 +51,6 @@ export function createTodoMesh(todo: Todo, index: number, scene: THREE.Scene): T
   textMesh.renderOrder = 1;
   group.add(textMesh);
 
-  const light = new THREE.PointLight(todo.completed ? 0x00ff88 : 0x00ffff, 1, 5, 2);
-  light.position.y = 1;
-  group.add(light);
-  group.userData.light = light;
-
   const angle = (index * 137.5) * Math.PI / 180;
   const radius = 4 + Math.floor(index / 8) * 3;
   group.position.set(Math.cos(angle) * radius, 1.5, Math.sin(angle) * radius);
@@ -74,7 +69,6 @@ export function updateTodoMesh(
 ): void {
   const cube = group.children[0] as THREE.Mesh;
   const edges = group.userData.edges as THREE.LineSegments;
-  const light = group.userData.light as THREE.PointLight;
 
   const cubeMat = cube.material as THREE.MeshStandardMaterial;
   const edgesMat = edges.material as THREE.LineBasicMaterial;
@@ -82,7 +76,6 @@ export function updateTodoMesh(
   cubeMat.color.setHex(todo.completed ? 0x00ff88 : 0x00ffff);
   cubeMat.emissive.setHex(todo.completed ? 0x00ff88 : 0x00ffff);
   edgesMat.color.setHex(todo.completed ? 0x00ff88 : 0xff00ff);
-  light.color.setHex(todo.completed ? 0x00ff88 : 0x00ffff);
 
   const textMesh = group.children.find(
     c => c instanceof THREE.Mesh && c.material instanceof THREE.MeshBasicMaterial && (c.material as THREE.MeshBasicMaterial).map
