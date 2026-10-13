@@ -458,7 +458,8 @@ function setupRaycaster(): void {
     mouse.x = (clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(todoMeshes.map(m => m.children[0]), true);
+    const objects = todoMeshes.map(m => m.children[0]).filter(Boolean) as THREE.Object3D[];
+    const intersects = raycaster.intersectObjects(objects, true);
     if (intersects.length > 0) {
       const group = intersects[0].object.parent;
       if (group && group.userData.todoId) {
