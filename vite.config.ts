@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-  base: '/cyberpunk-todo-3d/',
+  base: '/kilotest/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
